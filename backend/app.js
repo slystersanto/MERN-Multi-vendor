@@ -6,7 +6,7 @@ const bodyParser = require("body-parser");
 const cors = require("cors");
 
 app.use(cors({
-  origin: 'https://effervescent-tulumba-cfa789.netlify.app',
+  origin: 'http://localhost:3000',
   credentials: true
 }));
 
