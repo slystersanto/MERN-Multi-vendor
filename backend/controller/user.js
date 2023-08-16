@@ -13,15 +13,22 @@ const { isAuthenticated, isAdmin } = require("../middleware/auth");
 router.post("/create-user", async (req, res, next) => {
   try {
     const { name, email, password, avatar } = req.body;
+    
+    // Check if user with the same email already exists
     const userEmail = await User.findOne({ email });
-
     if (userEmail) {
       return next(new ErrorHandler("User already exists", 400));
     }
 
-    const myCloud = await cloudinary.v2.uploader.upload(avatar, {
-      folder: "avatars",
-    });
+    // Upload avatar to Cloudinary
+    let myCloud;
+    try {
+      myCloud = await cloudinary.v2.uploader.upload(avatar, {
+        folder: "avatars",
+      });
+    } catch (error) {
+      return next(new ErrorHandler("Avatar upload failed: " + error.message, 500));
+    }
 
     const user = {
       name: name,
@@ -34,7 +41,6 @@ router.post("/create-user", async (req, res, next) => {
     };
 
     const activationToken = createActivationToken(user);
-
     const activationUrl = `https://effervescent-tulumba-cfa789.netlify.app/activation/${activationToken}`;
 
     try {
@@ -43,17 +49,20 @@ router.post("/create-user", async (req, res, next) => {
         subject: "Activate your account",
         message: `Hello ${user.name}, please click on the link to activate your account: ${activationUrl}`,
       });
+      
+      // Respond with a success message and activation instructions
       res.status(201).json({
         success: true,
-        message: `please check your email:- ${user.email} to activate your account!`,
+        message: `User created. Please check your email (${user.email}) to activate your account.`,
       });
     } catch (error) {
-      return next(new ErrorHandler(error.message, 500));
+      return next(new ErrorHandler("Error sending activation email: " + error.message, 500));
     }
   } catch (error) {
-    return next(new ErrorHandler(error.message, 400));
+    return next(new ErrorHandler("User creation failed: " + error.message, 400));
   }
 });
+
 
 // create activation token
 const createActivationToken = (user) => {
